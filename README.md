@@ -1,4 +1,2 @@
-# Learning_Route
-This is a repository to record my code(IM STUDENT)
-
-plz see code in others Branch
+This is a student management system developed as part of a school course design assignment.
+这是一个学生管理系统的课设题目(AI立大功)
