@@ -1,0 +1,329 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>成绩统计 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+  <style>
+    .rank-cell { font-weight: 800; font-size: 16px; text-align: center; }
+    .sort-btn { cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 3px; transition: color 0.2s; }
+    .sort-btn:hover { color: var(--primary-500); }
+    .sort-btn.active { color: var(--primary-600); font-weight: 700; }
+
+    .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-top: 28px; }
+    .chart-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 24px; }
+    .chart-title { font-size: 15px; font-weight: 700; color: var(--gray-800); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+    /* 成绩分布条 */
+    .distribution-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .dist-label { width: 64px; font-size: 13px; font-weight: 600; color: var(--gray-600); }
+    .dist-track { flex: 1; height: 26px; background: var(--gray-100); border-radius: 13px; overflow: hidden; position: relative; }
+    .dist-fill { height: 100%; border-radius: 13px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 11px; font-weight: 700; color: white; transition: width 0.5s ease; }
+    .dist-count { width: 48px; font-size: 14px; font-weight: 700; text-align: right; color: var(--gray-700); }
+
+    /* 简易柱状图 */
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 200px; padding-top: 10px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 32px; }
+    .bar { width: 100%; max-width: 44px; border-radius: 4px 4px 0 0; transition: height 0.6s cubic-bezier(0.16,1,0.3,1); position: relative; cursor: pointer; }
+    .bar:hover { opacity: 0.85; transform: scaleY(1.02); transform-origin: bottom; }
+    .bar-value { font-size: 11px; font-weight: 700; color: var(--gray-600); }
+    .bar-label { font-size: 11px; color: var(--gray-400); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 48px; }
+    
+    /* 分数段颜色 */
+    .c-excellent { background: linear-gradient(180deg, #34d399, #10b981); }
+    .c-good { background: linear-gradient(180deg, #60a5fa, #3b82f6); }
+    .c-pass { background: linear-gradient(180deg, #fbbf24, #f59e0b); }
+    .c-fail { background: linear-gradient(180deg, #f87171, #ef4444); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" data-active="stats"></aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <h1 class="page-title">成绩统计</h1>
+          <p class="page-subtitle">按班级统计分析学生成绩，支持多维度排序</p>
+        </div>
+        <div class="header-right" id="headerUser">
+          <!-- 由 common.js renderHeaderUser() 动态填充 -->
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- 筛选 -->
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-body">
+            <div class="toolbar" style="margin-bottom:0;">
+              <label style="font-size:14px;font-weight:600;color:var(--gray-700);">选择班级：</label>
+              <select id="classSelect" class="filter-select" onchange="loadStatistics()" style="min-width:200px;">
+                <option value="">-- 请选择班级 --</option>
+              </select>
+              <label style="font-size:14px;font-weight:600;color:var(--gray-700);">学期：</label>
+              <select id="semSelect" class="filter-select" onchange="loadStatistics()">
+                <option value="2025-2026-1">2025-2026 第一学期</option>
+                <option value="2025-2026-2">2025-2026 第二学期</option>
+              </select>
+              <button class="btn btn-success btn-sm" onclick="exportReport()">导出统计报告</button>
+              <button class="btn btn-outline btn-sm" onclick="exportExcel()">导出成绩单</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 概览统计卡片 -->
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- 图表区域 -->
+        <div class="chart-grid" id="chartArea" style="display:none;"></div>
+
+        <!-- 排名表格 -->
+        <div class="card" style="margin-top:24px;" id="tableCard">
+          <div class="card-header">
+            <h3 class="card-title">学生排名（按平均分）<button class="sort-btn active" id="sortAvg" onclick="toggleSort('avgScore')">点击排序</button></h3>
+            <div class="toolbar">
+              <span style="font-size:13px;color:var(--gray-500);">排序方式：</span>
+              <button class="btn btn-outline btn-sm" onclick="setSortField('totalScore')">总分</button>
+              <button class="btn btn-primary btn-sm" onclick="setSortField('avgScore')">平均分</button>
+              <button class="btn btn-outline btn-sm" onclick="setSortField('语文')">语文</button>
+              <button class="btn btn-outline btn-sm" onclick="setSortField('数学')">数学</button>
+              <button class="btn btn-outline btn-sm" onclick="setSortField('英语')">英语</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>排名</th>
+                    <th>学号</th>
+                    <th>姓名</th>
+                    <th><span class="sort-btn ${sortField==='语文'?'active':''}" onclick="setSortField('语文')">语文</span></th>
+                    <th><span class="sort-btn ${sortField==='数学'?'active':''}" onclick="setSortField('数学')">数学</span></th>
+                    <th><span class="sort-btn ${sortField==='英语'?'active':''}" onclick="setSortField('英语')">英语</span></th>
+                    <th>物理</th>
+                    <th>化学</th>
+                    <th>生物</th>
+                    <th><span class="sort-btn ${sortField==='totalScore'?'active':''}" onclick="setSortField('totalScore')">总分</span></th>
+                    <th><span class="sort-btn ${sortField==='avgScore'?'active':''}" onclick="setSortField('avgScore')">平均分</span></th>
+                  </tr>
+                </thead>
+                <tbody id="rankTableBody"></tbody>
+              </table>
+            </div>
+            <div id="emptyRank" class="empty-state" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+              <h3>请选择班级查看统计</h3>
+              <p>选择班级后自动加载该班的成绩统计数据和排名</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    let sortField = 'avgScore';
+    let sortOrder = 'desc';
+    let allStudents = [];
+    const subjects = ['语文','数学','英语','物理','化学','生物'];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!requireLogin()) return;
+      initPageUI('stats');
+      loadClasses();
+    });
+
+    async function loadClasses(){
+      try{
+        const res=await apiRequest('/classes/list');
+        const sel=document.getElementById('classSelect');
+        res.data.forEach(c => sel.innerHTML+=`<option value="${c.id}">${c.className}</option>`);
+      }catch(e){}
+    }
+
+    async function loadStatistics(){
+      const classId=document.getElementById('classSelect').value;
+      if(!classId){
+        document.getElementById('rankTableBody').innerHTML='';
+        document.getElementById('emptyRank').style.display='';
+        document.getElementById('statsGrid').innerHTML='';
+        document.getElementById('chartArea').style.display='none';
+        return;
+      }
+      
+      const semester=document.getElementById('semSelect').value;
+      try{
+        const res=await apiRequest(`/statistics/class/${classId}?semester=${semester}`);
+        renderOverview(res.data.overview||{});
+        renderCharts(res.data.distribution||{},res.data.subjectAvg||[]);
+        allStudents=res.data.students||[];
+        renderRankTable();
+        document.getElementById('emptyRank').style.display='none';
+      }catch(e){ renderRankTable(); }
+    }
+
+    function renderOverview(o){
+      document.getElementById('statsGrid').innerHTML=`
+        <div class="stat-card">
+          <div class="stat-icon primary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+          <div class="stat-value">${o.totalCount||0}</div>
+          <div class="stat-label">总人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon success"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
+          <div class="stat-value">${o.classAvg?o.classAvg.toFixed(1):'--'}</div>
+          <div class="stat-label">班级均分</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon warning"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+          <div class="stat-value">${o.highestScore?o.highestScore.toFixed(1):'--'}</div>
+          <div class="stat-label">最高分</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon danger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>
+          <div class="stat-value">${o.failCount||0}</div>
+          <div class="stat-label">不及格人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon primary" style="background:#dbeafe;color:#2563eb;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div>
+          <div class="stat-value">${o.passRate?o.passRate.toFixed(1):'--'}%</div>
+          <div class="stat-label">及格率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon success" style="background:#ecfdf5;color:#059669;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="stat-value">${o.excellentRate?o.excellentRate.toFixed(1):'--'}%</div>
+          <div class="stat-label">优秀率 (>=90)</div>
+        </div>
+      `;
+    }
+
+    function renderCharts(dist, subjectAvgList){
+      const area=document.getElementById('chartArea');
+      area.style.display='grid';
+
+      // 分数段分布
+      const distHtml=`
+        <div class="chart-card">
+          <div class="chart-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            分数段分布
+          </div>
+          ${renderDistribution(dist)}
+        </div>
+      `;
+
+      // 各科平均分柱状图
+      const maxVal=Math.max(...subjectAvgList.map(s=>s.avg),1);
+      const barHtml=`
+        <div class="chart-card">
+          <div class="chart-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            各科平均分对比
+          </div>
+          <div class="bar-chart">
+            ${subjectAvgList.map(s=>`
+              <div class="bar-col">
+                <span class="bar-value">${s.avg?s.avg.toFixed(1):'-'}分</span>
+                <div class="bar c-excellent" style="height:${(s.avg/maxVal)*160}px;background:${getSubjectColor(s.subject)};"></div>
+                <span class="bar-label">${s.subject}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      area.innerHTML=distHtml+barHtml;
+    }
+
+    function renderDistribution(d){
+      const total=d.totalCount||1;
+      const segments=[
+        {key:'excellent', label:'优秀(90+)', color:'fill-excellent'},
+        {key:'good', label:'良好(75-89)', color:'fill-good'},
+        {key:'pass', label:'及格(60-74)', color:'fill-pass'},
+        {key:'fail', label:'不及格(<60)', color:'fill-fail'}
+      ];
+      return segments.map(seg=>{
+        const count=d[seg.key]||0;
+        const pct=count/total*100;
+        return `
+          <div class="distribution-row">
+            <span class="dist-label">${seg.label}</span>
+            <div class="dist-track"><div class="dist-fill ${seg.color}" style="width:${Math.max(pct,2)}%;">${count>0?count:''}</div></div>
+            <span class="dist-count">${count}人 (${pct.toFixed(1)}%)</span>
+          </div>`;
+      }).join('');
+    }
+
+    function getSubjectColor(sub){
+      const colors={
+        '语文':'linear-gradient(180deg,#ef4444,#dc2626)',
+        '数学':'linear-gradient(180deg,#3b82f6,#2563eb)',
+        '英语':'linear-gradient(180deg,#10b981,#059669)',
+        '物理':'linear-gradient(180deg,#8b5cf6,#7c3aed)',
+        '化学':'linear-gradient(180deg,#f59e0b,#d97706)',
+        '生物':'linear-gradient(180deg,#06b6d4,#0891b2)'
+      };
+      return colors[sub]||'linear-gradient(180deg,#94a3b8,#64748b)';
+    }
+
+    function setSortField(field){
+      if(sortField===field){
+        sortOrder=sortOrder==='desc'?'asc':'desc';
+      } else {
+        sortField=field;
+        sortOrder='desc';
+      }
+      renderRankTable();
+    }
+
+    function toggleSort(f){ setSortField(f); }
+
+    function renderRankTable(){
+      const tb=document.getElementById('rankTableBody');
+      if(!allStudents.length){ tb.innerHTML=''; return; }
+
+      // 排序
+      const sorted=[...allStudents].sort((a,b)=>{
+        let va=a[sortField]||0, vb=b[sortField]||0;
+        if(typeof va==='string') va=parseFloat(va)||0;
+        if(typeof vb==='string') vb=parseFloat(vb)||0;
+        return sortOrder==='desc'?vb-va:va-vb;
+      });
+
+      tb.innerHTML=sorted.map((s,i)=>{
+        const rank=i+1;
+        let rankClass='rank-default';
+        if(rank===1) rankClass='rank-1';
+        else if(rank===2) rankClass='rank-2';
+        else if(rank===3) rankClass='rank-3';
+
+        return `<tr>
+          <td class="rank-cell"><span class="rank-badge ${rankClass}">${rank}</span></td>
+          <td><strong>${s.studentNo}</strong></td>
+          <td><span class="avatar-sm ${s.gender==='男'?'gender-male':'gender-female'}">${s.name.charAt(0)}</span>${s.name}</td>
+          ${subjects.map(sub=>`<td>${formatScore(s[sub])}</td>`).join('')}
+          <td><strong style="color:var(--primary-600);">${formatScore(s.totalScore)}</strong></td>
+          <td><strong style="color:${(s.avgScore||0)>=85?'#059669':(s.avgScore||0)>=60?'#d97706':'#dc2626'};">${formatScore(s.avgScore)}</strong></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function exportReport(){
+      const cid=document.getElementById('classSelect').value;
+      if(!cid){showToast('请先选择班级','warning');return;}
+      downloadFile(`/statistics/export/report?classId=${cid}&semester=${document.getElementById('semSelect').value}`,`统计报告_${new Date().toLocaleDateString('zh-CN')}.xlsx`);
+      showToast('正在导出统计报告...');
+    }
+
+    function exportExcel(){
+      const cid=document.getElementById('classSelect').value;
+      if(!cid){showToast('请先选择班级','warning');return;}
+      downloadFile(`/statistics/export/excel?classId=${cid}&semester=${document.getElementById('semSelect').value}&sortField=${sortField}&sortOrder=${sortOrder}`,`成绩单_${new Date().toLocaleDateString('zh-CN')}.xlsx`);
+      showToast('正在导出成绩单...');
+    }
+  </script>
+</body>
+</html>

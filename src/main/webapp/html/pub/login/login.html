@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+  <style>
+    .login-page {
+      min-height: 100dvh;
+      display: flex;
+    }
+
+    .login-left {
+      flex: 1;
+      background: linear-gradient(135deg, #1e293b 0%, #312e81 50%, #4338ca 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-left::before {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+      top: -150px;
+      right: -100px;
+      border-radius: 50%;
+    }
+
+    .login-left::after {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%);
+      bottom: -100px;
+      left: -50px;
+      border-radius: 50%;
+    }
+
+    .brand-content {
+      text-align: center;
+      color: white;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+      font-size: 36px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .brand-title {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 14px;
+    }
+
+    .brand-desc {
+      font-size: 16px;
+      color: rgba(255,255,255,0.65);
+      max-width: 340px;
+      line-height: 1.7;
+      margin: 0 auto;
+    }
+
+    .feature-list {
+      margin-top: 40px;
+      text-align: left;
+      display: inline-block;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+    }
+
+    .feature-item svg {
+      width: 18px;
+      height: 18px;
+      color: #818cf8;
+      flex-shrink: 0;
+    }
+
+    .login-right {
+      width: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      background: #ffffff;
+    }
+
+    .login-form-container {
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .login-form-header {
+      margin-bottom: 36px;
+    }
+
+    .login-form-header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .login-form-header p {
+      font-size: 15px;
+      color: var(--gray-500);
+    }
+
+    .login-tabs {
+      display: flex;
+      background: var(--gray-100);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+
+    .login-tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--gray-500);
+      transition: all var(--transition-fast);
+    }
+
+    .login-tab.active {
+      background: white;
+      color: var(--primary-600);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .form-group-login {
+      margin-bottom: 22px;
+    }
+
+    .form-input-login {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      outline: none;
+      transition: all var(--transition-fast);
+      background: var(--bg-secondary);
+    }
+
+    .form-input-login:focus {
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 26px;
+    }
+
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .remember-me input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary-500);
+    }
+
+    .forgot-link {
+      font-size: 14px;
+      color: var(--primary-500);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 26px 0;
+      gap: 14px;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--gray-200);
+    }
+
+    .divider-text {
+      font-size: 12px;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 960px) {
+      .login-left { display: none; }
+      .login-right { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      .login-right { padding: 24px; }
+      .brand-title { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <!-- 左侧品牌区 -->
+    <div class="login-left">
+      <div class="brand-content">
+        <div class="brand-icon">SMS</div>
+        <h2 class="brand-title">学生成绩管理系统</h2>
+        <p class="brand-desc">高效、智能的教育数据管理平台，助力教学数字化转型</p>
+        <div class="feature-list">
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+            学生信息全生命周期管理
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            教师资源智能分配
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            成绩统计与可视化分析
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            多格式成绩单导出
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧登录表单 -->
+    <div class="login-right">
+      <div class="login-form-container">
+        <div class="login-form-header">
+          <h1>欢迎回来</h1>
+          <p>请选择角色并登录系统</p>
+        </div>
+
+        <div class="login-tabs">
+          <button class="login-tab active" data-role="admin" onclick="switchRole(this, 'admin')">管理员</button>
+          <button class="login-tab" data-role="teacher" onclick="switchRole(this, 'teacher')">教师</button>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <input type="hidden" id="loginRole" value="admin">
+
+          <div class="form-group-login">
+            <label class="form-label">用户名 / 工号</label>
+            <input type="text" id="username" class="form-input-login" placeholder="请输入用户名或工号" required>
+          </div>
+
+          <div class="form-group-login">
+            <label class="form-label">密码</label>
+            <input type="password" id="password" class="form-input-login" placeholder="请输入密码" required>
+          </div>
+
+          <div class="form-options">
+            <label class="remember-me">
+              <input type="checkbox" checked>
+              记住我
+            </label>
+            <a href="forgot-password.html" class="forgot-link">忘记密码？</a>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-login">登 录</button>
+        </form>
+
+        <div class="divider">
+          <span class="divider-line"></span>
+          <span class="divider-text">安全提示</span>
+          <span class="divider-line"></span>
+        </div>
+
+        <p style="font-size: 12px; color: var(--gray-400); text-align: center;">
+          系统采用加密传输，请确保在安全环境下操作
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    function switchRole(el, role) {
+      document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('loginRole').value = role;
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+
+      const role = document.getElementById('loginRole').value;
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showToast('请填写完整的登录信息', 'warning');
+        return;
+      }
+
+      try {
+        // 调用后端登录接口
+        const result = await apiRequest('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ username, password, role })
+        });
+
+        // result 是完整的响应 {code, message, data: {token, user, expiresIn}}
+        const loginData = result.data;
+        // 存储 token 和用户信息
+        localStorage.setItem('token', loginData.token);
+        localStorage.setItem('userInfo', JSON.stringify(loginData.user));
+
+        showToast(`欢迎回来，${loginData.user.name}！`, 'success');
+
+        // 根据角色跳转不同页面
+        setTimeout(() => {
+          if (loginData.user.role === 'admin') {
+            window.location.href = '/html/personal/admin/students.html';
+          } else if (loginData.user.role === 'teacher') {
+            window.location.href = '/html/personal/teach/scores.html';
+          }
+        }, 800);
+
+      } catch (err) {
+        // 错误已在 apiRequest 中处理
+      }
+    }
+  </script>
+</body>
+</html>

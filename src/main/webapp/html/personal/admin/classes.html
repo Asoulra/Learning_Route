@@ -1,0 +1,251 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>班级管理 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar" data-active="classes"></aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <div>
+            <h1 class="page-title">班级管理</h1>
+            <p class="page-subtitle">管理班级信息的增删改查</p>
+          </div>
+        </div>
+        <div class="header-right" id="headerUser">
+          <!-- 由 common.js renderHeaderUser() 动态填充 -->
+        </div>
+      </header>
+
+      <div class="content-area">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon primary">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+            </div>
+            <div class="stat-value" id="totalClasses">--</div>
+            <div class="stat-label">班级总数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div class="stat-value" id="totalStudents">--</div>
+            <div class="stat-label">总学生数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon warning">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <div class="stat-value" id="avgSize">--</div>
+            <div class="stat-label">平均班额</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">班级列表</h3>
+            <div class="toolbar">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="searchInput" placeholder="搜索班级名称、年级..." oninput="debouncedLoad()">
+              </div>
+              <select id="gradeFilter" class="filter-select" onchange="loadClasses()">
+                <option value="">全部年级</option>
+                <option value="2024级">2024级</option>
+                <option value="2023级">2023级</option>
+                <option value="2022级">2022级</option>
+                <option value="2021级">2021级</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="openAddClass()">+ 添加班级</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>班级编号</th>
+                    <th>班级名称</th>
+                    <th>年级</th>
+                    <th>班主任</th>
+                    <th>学生人数</th>
+                    <th>创建时间</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="classTableBody"></tbody>
+              </table>
+            </div>
+            <div id="emptyState" class="empty-state" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+              <h3>暂无班级数据</h3>
+              <p>点击右上角按钮添加第一个班级</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 班级表单弹窗 -->
+  <div class="modal-overlay" id="classModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="classModalTitle">添加班级</h3>
+        <button class="modal-close" onclick="closeModal('classModal')">&times;</button>
+      </div>
+      <form id="classForm" onsubmit="saveClass(event)">
+        <div class="modal-body">
+          <input type="hidden" id="classId">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">班级名称 *</label>
+              <input type="text" id="className" class="form-input" placeholder="例：高三(1)班" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">年级 *</label>
+              <select id="grade" class="form-select" required>
+                <option value="">请选择年级</option>
+                <option value="2024级">2024级</option>
+                <option value="2023级">2023级</option>
+                <option value="2022级">2022级</option>
+                <option value="2021级">2021级</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">班主任</label>
+              <input type="text" id="headTeacher" class="form-input" placeholder="请输入班主任姓名">
+            </div>
+            <div class="form-group">
+              <label class="form-label">教室位置</label>
+              <input type="text" id="roomLocation" class="form-input" placeholder="例：教学楼A301">
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+              <label class="form-label">备注</label>
+              <textarea id="remark" class="form-input" rows="2" placeholder="选填"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('classModal')">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    let timer = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = requireLogin();
+      if (!user) return;
+      if (user.role !== 'admin') {
+        window.location.href = BASE + '/html/personal/teach/scores.html';
+        return;
+      }
+      initPageUI('classes');
+      loadClasses();
+      loadStats();
+    });
+
+    function debouncedLoad() {
+      clearTimeout(timer);
+      timer = setTimeout(loadClasses, 350);
+    }
+
+    async function loadClasses() {
+      const keyword = document.getElementById('searchInput').value.trim();
+      const grade = document.getElementById('gradeFilter').value;
+      const params = new URLSearchParams({ ...(keyword&&{keyword}), ...(grade&&{grade}) });
+
+      try {
+        const res = await apiRequest(`/classes?${params}`);
+        renderTable(res.data);
+      } catch(e) { renderTable([]); }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await apiRequest('/classes/stats');
+        document.getElementById('totalClasses').textContent = res.data.total || 0;
+        document.getElementById('totalStudents').textContent = res.data.totalStudents || 0;
+        document.getElementById('avgSize').textContent = res.data.avgSize || 0;
+      } catch(e){}
+    }
+
+    function renderTable(list) {
+      const tb = document.getElementById('classTableBody');
+      const es = document.getElementById('emptyState');
+      if(!list.length){ tb.innerHTML=''; es.style.display=''; return; }
+      es.style.display='none';
+      tb.innerHTML=list.map(c=>`
+        <tr>
+          <td><strong>${c.id}</strong></td>
+          <td><strong>${c.className}</strong></td>
+          <td><span class="badge badge-primary">${c.grade||'-'}</span></td>
+          <td>${c.headTeacher||'<span style="color:var(--gray-400)">未指定</span>'}</td>
+          <td><span class="badge badge-success">${c.studentCount||0}人</span></td>
+          <td>${formatDate(c.createdAt)}</td>
+          <td>${c.remark||'-'}</td>
+          <td class="action-cell">
+            <button class="btn btn-outline btn-sm" onclick="editClass('${encodeURIComponent(JSON.stringify(c))}')">编辑</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteClass(${c.id},'${c.className}')">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openAddClass() {
+      document.getElementById('classModalTitle').textContent='添加班级';
+      document.getElementById('classForm').reset();
+      document.getElementById('classId').value='';
+      openModal('classModal');
+    }
+
+    function editClass(encoded) {
+      const c=JSON.parse(decodeURIComponent(encoded));
+      document.getElementById('classModalTitle').textContent='编辑班级';
+      document.getElementById('classId').value=c.id;
+      document.getElementById('className').value=c.className;
+      document.getElementById('grade').value=c.grade||'';
+      document.getElementById('headTeacher').value=c.headTeacher||'';
+      document.getElementById('roomLocation').value=c.roomLocation||'';
+      document.getElementById('remark').value=c.remark||'';
+      openModal('classModal');
+    }
+
+    function saveClass(e){
+      e.preventDefault();
+      const id=document.getElementById('classId').value;
+      const data={
+        className:document.getElementById('className').value.trim(),
+        grade:document.getElementById('grade').value,
+        headTeacher:document.getElementById('headTeacher').value.trim(),
+        roomLocation:document.getElementById('roomLocation').value.trim(),
+        remark:document.getElementById('remark').value.trim()
+      };
+      apiRequest(id?`/classes/${id}`:'/classes',{method:id?'PUT':'POST',body:JSON.stringify(data)})
+        .then(()=>{showToast(id?'更新成功':'添加成功');closeModal('classModal');loadClasses();loadStats();})
+        .catch(()=>{});
+    }
+
+    function deleteClass(id,name){
+      showConfirm(`确定要删除班级「${name}」吗？`,()=>{
+        apiRequest(`/classes/${id}`,{method:'DELETE'}).then(()=>{
+          showToast('删除成功');loadClasses();loadStats();
+        }).catch(()=>{});
+      });
+    }
+  </script>
+</body>
+</html>

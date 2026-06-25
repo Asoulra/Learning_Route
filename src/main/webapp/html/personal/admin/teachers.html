@@ -1,0 +1,364 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教师管理 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+  <style>
+    .upload-area { border: 2px dashed var(--primary-300); background: var(--primary-50); padding: 24px; text-align: center; border-radius: var(--radius-md); cursor: pointer; transition: all 0.25s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .upload-area:hover { border-color: var(--primary-500); background: #eef2ff; }
+    .upload-area svg { width: 40px; height: 40px; color: var(--primary-400); margin-bottom: 10px; flex-shrink: 0; }
+    .upload-area p { font-size: 14px; color: var(--gray-600); margin-top: 6px; }
+    .upload-area .highlight { color: var(--primary-600); font-weight: 700; }
+    .template-link { display: inline-flex; align-items: center; gap: 6px; color: var(--primary-500); font-size: 13px; text-decoration: none; margin-top: 12px; font-weight: 500; }
+    .template-link:hover { text-decoration: underline; }
+    .import-result { margin-top: 16px; padding: 16px; border-radius: var(--radius-sm); display: none; }
+    .import-result.success { background: var(--success-50); border: 1px solid rgba(16,185,129,0.2); }
+    .import-result.error { background: var(--danger-50); border: 1px solid rgba(239,68,68,0.2); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" data-active="teachers"></aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <h1 class="page-title">教师管理</h1>
+          <p class="page-subtitle">管理教师信息，支持批量导入</p>
+        </div>
+        <div class="header-right" id="headerUser">
+          <!-- 由 common.js renderHeaderUser() 动态填充 -->
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- 统计 -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon primary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <div class="stat-value" id="totalTeachers">--</div>
+            <div class="stat-label">教师总数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="stat-value" id="totalCourses">--</div>
+            <div class="stat-label">授课科目数</div>
+          </div>
+        </div>
+
+        <!-- 教师列表卡片 -->
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-header">
+            <h3 class="card-title">教师列表</h3>
+            <div class="toolbar">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="searchInput" placeholder="搜索工号、姓名..." oninput="debouncedLoad()">
+              </div>
+              <select id="subjectFilter" class="filter-select" onchange="loadTeachers()"><option value="">全部科目</option></select>
+              <button class="btn btn-primary btn-sm" onclick="openAddTeacher()">+ 添加教师</button>
+              <button class="btn btn-success btn-sm" onclick="openModal('importModal')">导入列表</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>工号</th><th>姓名</th><th>性别</th><th>职称</th><th>授课科目</th><th>联系电话</th><th>状态</th><th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="teacherTableBody"></tbody>
+              </table>
+            </div>
+            <div id="emptyState" class="empty-state" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <h3>暂无教师数据</h3>
+              <p>添加或导入教师信息</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 导入区域卡片 -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">批量导入教师</h3>
+            <a href="#" class="template-link" onclick="downloadTemplate(event)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              下载导入模板
+            </a>
+          </div>
+          <div class="card-body">
+            <label class="upload-area" for="fileInput">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <strong class="highlight">点击上传文件</strong> 或将文件拖放到此处
+              <p>支持格式：.xlsx / .xls / .csv，单次最大 1000 条</p>
+            </label>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden onchange="handleUpload(this)">
+            
+            <div id="importResult" class="import-result"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 教师表单弹窗 -->
+  <div class="modal-overlay" id="teacherModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="teacherModalTitle">添加教师</h3>
+        <button class="modal-close" onclick="closeModal('teacherModal')">&times;</button>
+      </div>
+      <form id="teacherForm" onsubmit="saveTeacher(event)">
+        <div class="modal-body">
+          <input type="hidden" id="teacherId">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">工号 *</label>
+              <input type="text" id="teacherNo" class="form-input" placeholder="例：T2024001" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">姓名 *</label>
+              <input type="text" id="teacherName" class="form-input" placeholder="请输入姓名" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">性别 *</label>
+              <select id="teacherGender" class="form-select" required>
+                <option value="">请选择</option><option value="男">男</option><option value="女">女</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">职称</label>
+              <select id="title" class="form-select">
+                <option value="">请选择</option>
+                <option value="教授">教授</option>
+                <option value="副教授">副教授</option>
+                <option value="讲师">讲师</option>
+                <option value="助教">助教</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">授课科目 *</label>
+              <select id="subject" class="form-select" required>
+                <option value="">请选择科目</option>
+                <option value="语文">语文</option>
+                <option value="数学">数学</option>
+                <option value="英语">英语</option>
+                <option value="物理">物理</option>
+                <option value="化学">化学</option>
+                <option value="生物">生物</option>
+                <option value="历史">历史</option>
+                <option value="地理">地理</option>
+                <option value="政治">政治</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">联系电话</label>
+              <input type="tel" id="teacherPhone" class="form-input" placeholder="手机号">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">邮箱</label>
+              <input type="email" id="teacherEmail" class="form-input" placeholder="邮箱地址（选填）">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('teacherModal')">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 导入弹窗 -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">批量导入教师</h3>
+        <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--gray-600);margin-bottom:16px;">请按照模板格式填写数据后上传 Excel 文件。</p>
+        <div style="background:var(--gray-50);border-radius:var(--radius-sm);padding:16px;font-size:13px;margin-bottom:16px;">
+          <strong style="color:var(--gray-700);">模板字段说明：</strong>
+          <ul style="margin:8px 0 0 18px;color:var(--gray-500);line-height:1.8;">
+            <li><code>工号</code> - 必填，唯一标识</li>
+            <li><code>姓名</code> - 必填</li>
+            <li><code>性别</code> - 男/女</li>
+            <li><code>职称</code> - 教授/副教授/讲师/助教</li>
+            <li><code>授课科目</code> - 必填</li>
+            <li><code>联系电话</code> - 选填</li>
+            <li><code>邮箱</code> - 选填</li>
+          </ul>
+        </div>
+        <label class="upload-area" style="padding:28px;" for="modalFileInput">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <strong>选择 Excel 文件</strong>
+          <p>.xlsx / .xls / .csv 格式</p>
+        </label>
+        <input type="file" id="modalFileInput" accept=".xlsx,.xls,.csv" hidden onchange="handleImport(this)">
+        
+        <div id="modalImportResult" class="import-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    let timer = null;
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = requireLogin();
+      if (!user) return;
+      if (user.role !== 'admin') {
+        window.location.href = BASE + '/html/personal/teach/scores.html';
+        return;
+      }
+      initPageUI('teachers');
+      loadTeachers();
+      loadStats();
+    });
+
+    function debouncedLoad(){ clearTimeout(timer); timer=setTimeout(loadTeachers,350); }
+
+    async function loadTeachers(){
+      const keyword=document.getElementById('searchInput').value.trim();
+      const subject=document.getElementById('subjectFilter').value;
+      const params = new URLSearchParams({...(keyword&&{keyword}),...(subject&&{subject})});
+      try{
+        const res=await apiRequest(`/teachers?${params}`);
+        renderTable(res.data);
+      }catch(e){ renderTable([]); }
+    }
+
+    async function loadStats(){
+      try{
+        const res=await apiRequest('/teachers/stats');
+        document.getElementById('totalTeachers').textContent=res.data.total||0;
+        document.getElementById('totalCourses').textContent=res.data.subjectCount||0;
+      }catch(e){}
+    }
+
+    function renderTable(list){
+      const tb=document.getElementById('teacherTableBody');
+      const es=document.getElementById('emptyState');
+      if(!list.length){tb.innerHTML='';es.style.display='';return;}
+      es.style.display='none';
+      tb.innerHTML=list.map(t=>`
+        <tr>
+          <td><strong>${t.teacherNo}</strong></td>
+          <td>${t.name}</td>
+          <td><span class="badge ${t.gender==='男'?'badge-primary':'badge-success'}">${t.gender}</span></td>
+          <td>${t.title||'-'}</td>
+          <td><span class="badge badge-warning">${t.subject||'-'}</span></td>
+          <td>${t.phone||'-'}</td>
+          <td><span class="badge badge-success">在职</span></td>
+          <td class="action-cell">
+            <button class="btn btn-outline btn-sm" onclick="editTeacher('${encodeURIComponent(JSON.stringify(t))}')">编辑</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTeacher(${t.id},'${t.name}')">删除</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function openAddTeacher(){
+      document.getElementById('teacherModalTitle').textContent='添加教师';
+      document.getElementById('teacherForm').reset();
+      document.getElementById('teacherId').value='';
+      openModal('teacherModal');
+    }
+
+    function editTeacher(encoded){
+      const t=JSON.parse(decodeURIComponent(encoded));
+      document.getElementById('teacherModalTitle').textContent='编辑教师';
+      document.getElementById('teacherId').value=t.id;
+      document.getElementById('teacherNo').value=t.teacherNo;
+      document.getElementById('teacherName').value=t.name;
+      document.getElementById('teacherGender').value=t.gender||'';
+      document.getElementById('title').value=t.title||'';
+      document.getElementById('subject').value=t.subject||'';
+      document.getElementById('teacherPhone').value=t.phone||'';
+      document.getElementById('teacherEmail').value=t.email||'';
+      openModal('teacherModal');
+    }
+
+    function saveTeacher(e){
+      e.preventDefault();
+      const id=document.getElementById('teacherId').value;
+      const data={
+        teacherNo:document.getElementById('teacherNo').value.trim(),
+        name:document.getElementById('teacherName').value.trim(),
+        gender:document.getElementById('teacherGender').value,
+        title:document.getElementById('title').value,
+        subject:document.getElementById('subject').value,
+        phone:document.getElementById('teacherPhone').value.trim(),
+        email:document.getElementById('teacherEmail').value.trim()
+      };
+      apiRequest(id?`/teachers/${id}`:'/teachers',{method:id?'PUT':'POST',body:JSON.stringify(data)})
+        .then(()=>{showToast(id?'更新成功':'添加成功');closeModal('teacherModal');loadTeachers();loadStats();})
+        .catch(()=>{});
+    }
+
+    function deleteTeacher(id,name){
+      showConfirm(`确定要删除教师「${name}」吗？`,()=>{
+        apiRequest(`/teachers/${id}`,{method:'DELETE'}).then(()=>{
+          showToast('删除成功');loadTeachers();loadStats();
+        }).catch(()=>{});
+      });
+    }
+
+    // 文件上传处理
+    function handleUpload(input){
+      const file=input.files[0];
+      if(!file) return;
+      if(file.size>10*1024*1024){ showToast('文件不能超过10MB','error'); return; }
+      
+      const formData=new FormData();
+      formData.append('file',file);
+      
+      // 调用导入接口
+      fetch(`${API_BASE}/teachers/import`,{method:'POST',headers:{'Authorization':`Bearer ${localStorage.getItem('token')}`},body:formData})
+        .then(r=>r.json())
+        .then(res=>{
+          showImportResult(document.getElementById('importResult'),res);
+          if(res.code===200) loadTeachers();
+        })
+        .catch(err=>showToast('上传失败','error'));
+      input.value='';
+    }
+
+    function handleImport(input){
+      const file=input.files[0];
+      if(!file) return;
+      if(file.size>10*1024*1024){ showToast('文件不能超过10MB','error'); return; }
+      
+      const formData=new FormData();
+      formData.append('file',file);
+
+      fetch(`${API_BASE}/teachers/import`,{method:'POST',headers:{'Authorization':`Bearer ${localStorage.getItem('token')}`},body:formData})
+        .then(r=>r.json())
+        .then(res=>{
+          showImportResult(document.getElementById('modalImportResult'),res);
+          if(res.code===200){ setTimeout(()=>{closeModal('importModal');loadTeachers();},1500); }
+        })
+        .catch(err=>showToast('导入失败','error'));
+      input.value='';
+    }
+
+    function showImportResult(el, res){
+      el.style.display='block';
+      el.className='import-result '+(res.code===200?'success':'error');
+      if(res.code===200){
+        el.innerHTML=`<strong style="color:#059669;">导入成功！</strong> 成功导入 <strong>${res.data.successCount}</strong> 条记录${res.data.failCount?`，<strong style="color:#dc2626;">${res.data.failCount}</strong> 条失败`:''}`;
+      } else {
+        el.innerHTML=`<strong style="color:#dc2626;">导入失败：</strong> ${res.message}`;
+      }
+    }
+
+    function downloadTemplate(e){
+      e.preventDefault();
+      downloadFile('/teachers/template','教师导入模板.xlsx');
+    }
+  </script>
+</body>
+</html>

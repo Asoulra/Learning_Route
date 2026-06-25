@@ -1,0 +1,172 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据统计 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+  <style>
+    .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 24px; }
+    .data-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 28px; transition: all 0.25s; }
+    .data-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .data-card .card-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+    .data-card .card-value { font-size: 36px; font-weight: 800; color: var(--gray-900); margin-bottom: 8px; }
+    .data-card .card-label { font-size: 14px; color: var(--gray-600); font-weight: 500; }
+    .data-card .card-sublabel { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+    
+    .breakdown-list { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200); }
+    .breakdown-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; }
+    .breakdown-item:not(:last-child) { border-bottom: 1px solid var(--gray-100); }
+    .breakdown-item .label { color: var(--gray-700); font-weight: 500; }
+    .breakdown-item .value { color: var(--gray-900); font-weight: 700; }
+    
+    .refresh-btn { position: fixed; bottom: 32px; right: 32px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-500), var(--primary-600)); color: white; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; transition: all 0.3s; z-index: 100; }
+    .refresh-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(99,102,241,0.4); }
+    .refresh-btn:active { transform: scale(0.95); }
+    .refresh-btn svg { width: 24px; height: 24px; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" data-active="check"></aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <h1 class="page-title">数据统计</h1>
+          <p class="page-subtitle">实时查看学生数量统计信息</p>
+        </div>
+        <div class="header-right" id="headerUser">
+        </div>
+      </header>
+
+      <div class="content-area">
+        <div class="stats-grid" id="overviewGrid">
+          <div class="stat-card">
+            <div class="stat-icon primary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <div class="stat-value" id="totalStudents">--</div>
+            <div class="stat-label">学生总数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+            <div class="stat-value" id="maleStudents">--</div>
+            <div class="stat-label">男生人数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon warning"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>
+            <div class="stat-value" id="femaleStudents">--</div>
+            <div class="stat-label">女生人数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon danger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div class="stat-value" id="totalClasses">--</div>
+            <div class="stat-label">班级总数</div>
+          </div>
+        </div>
+
+        <div class="data-grid">
+          <div class="data-card">
+            <div class="card-icon" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #2563eb;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div class="card-value" id="avgClassSize">--</div>
+            <div class="card-label">平均班额</div>
+            <div class="card-sublabel">每个班级的平均学生数</div>
+            
+            <div class="breakdown-list" id="classBreakdown">
+            </div>
+          </div>
+
+          <div class="data-card">
+            <div class="card-icon" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #db2777;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            </div>
+            <div class="card-value" id="genderRatio">--</div>
+            <div class="card-label">男女比例</div>
+            <div class="card-sublabel">男生 : 女生</div>
+            
+            <div class="breakdown-list">
+              <div class="breakdown-item">
+                <span class="label">男生占比</span>
+                <span class="value" id="malePercent">--%</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="label">女生占比</span>
+                <span class="value" id="femalePercent">--%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="refresh-btn" onclick="loadStatistics()" title="刷新数据">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!requireLogin()) return;
+      initPageUI('check');
+      loadStatistics();
+    });
+
+    async function loadStatistics() {
+      try {
+        const res = await apiRequest('/students/stats');
+        
+        document.getElementById('totalStudents').textContent = res.data.total || 0;
+        document.getElementById('maleStudents').textContent = res.data.maleCount || 0;
+        document.getElementById('femaleStudents').textContent = res.data.femaleCount || 0;
+        document.getElementById('totalClasses').textContent = res.data.classCount || 0;
+        
+        const avgSize = res.data.total && res.data.classCount 
+          ? Math.round(res.data.total / res.data.classCount) 
+          : '--';
+        document.getElementById('avgClassSize').textContent = avgSize;
+        
+        const malePercent = res.data.total 
+          ? ((res.data.maleCount / res.data.total) * 100).toFixed(1) 
+          : '--';
+        const femalePercent = res.data.total 
+          ? ((res.data.femaleCount / res.data.total) * 100).toFixed(1) 
+          : '--';
+        document.getElementById('malePercent').textContent = malePercent + '%';
+        document.getElementById('femalePercent').textContent = femalePercent + '%';
+        
+        const ratio = res.data.maleCount && res.data.femaleCount
+          ? (res.data.maleCount / res.data.femaleCount).toFixed(2)
+          : '--';
+        document.getElementById('genderRatio').textContent = ratio;
+        
+        await loadClassBreakdown();
+        
+        showToast('数据已刷新', 'success');
+      } catch (e) {
+        console.error('加载统计数据失败:', e);
+      }
+    }
+
+    async function loadClassBreakdown() {
+      try {
+        const res = await apiRequest('/classes/list');
+        const container = document.getElementById('classBreakdown');
+        
+        if (res.data && res.data.length > 0) {
+          container.innerHTML = res.data.map(item => `
+            <div class="breakdown-item">
+              <span class="label">${item.className}</span>
+              <span class="value">${item.studentCount || 0}人</span>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:20px 0;">暂无班级数据</div>';
+        }
+      } catch (e) {
+        console.error('加载班级明细失败:', e);
+      }
+    }
+  </script>
+</body>
+</html>

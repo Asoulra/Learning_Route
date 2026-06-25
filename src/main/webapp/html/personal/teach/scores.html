@@ -1,0 +1,350 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>成绩录入 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+  <style>
+    .score-input { width: 80px !important; text-align: center; font-weight: 700; font-size: 15px !important; padding: 8px 6px !important; }
+    .score-input:focus { border-color: var(--primary-500); box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important; }
+    .score-excellent { color: #059669; background: #ecfdf5; border-color: #a7f3d0 !important; }
+    .score-good { color: #2563eb; background: #eff6ff; border-color: #bfdbfe !important; }
+    .score-pass { color: #d97706; background: #fffbeb; border-color: #fde68a !important; }
+    .score-fail { color: #dc2626; background: #fef2f2; border-color: #fecaca !important; }
+    .batch-bar { display: flex; align-items: center; gap: 12px; padding: 16px 24px; background: var(--gray-50); border-radius: var(--radius-md); margin-bottom: 20px; flex-wrap: wrap; }
+    .batch-bar label { font-size: 13px; font-weight: 600; color: var(--gray-600); }
+    .save-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.3s; }
+    .save-indicator.show { opacity: 1; }
+    .save-indicator.saved { background: var(--success-50); color: var(--success-600); }
+    .save-indicator.saving { background: var(--warning-50); color: var(--warning-600); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" data-active="scores"></aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <h1 class="page-title">成绩录入</h1>
+          <p class="page-subtitle">按班级录入和修改学生成绩</p>
+        </div>
+        <div class="header-right" id="headerUser">
+          <!-- 由 common.js renderHeaderUser() 动态填充 -->
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- 筛选栏 -->
+        <div class="batch-bar">
+          <label>选择班级：</label>
+          <select id="classSelect" class="filter-select" onchange="loadStudents()" style="min-width:180px;">
+            <option value="">-- 请选择班级 --</option>
+          </select>
+          
+          <label>选择科目：</label>
+          <select id="subjectSelect" class="filter-select" onchange="loadStudents()" style="min-width:140px;">
+            <option value="">-- 全部科目 --</option>
+            <option value="语文">语文</option>
+            <option value="数学">数学</option>
+            <option value="英语">英语</option>
+            <option value="物理">物理</option>
+            <option value="化学">化学</option>
+            <option value="生物">生物</option>
+            <option value="历史">历史</option>
+            <option value="地理">地理</option>
+            <option value="政治">政治</option>
+          </select>
+
+          <label style="margin-left: auto;">学期：</label>
+          <select id="semSelect" class="filter-select" onchange="loadStudents()" style="min-width:180px;">
+            <option value="2025-2026-1">2025-2026 第一学期</option>
+            <option value="2025-2026-2">2025-2026 第二学期</option>
+          </select>
+
+          <span id="saveIndicator" class="save-indicator"></span>
+        </div>
+
+        <!-- 统计概览 -->
+        <div class="stats-grid" style="margin-bottom:20px;">
+          <div class="stat-card">
+            <div class="stat-icon primary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <div class="stat-value" id="studentCount">--</div>
+            <div class="stat-label">当前班学生数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+            <div class="stat-value" id="avgScore">--</div>
+            <div class="stat-label">平均分</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon warning"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="stat-value" id="highestScore">--</div>
+            <div class="stat-label">最高分</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon danger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div class="stat-value" id="failCount">--</div>
+            <div class="stat-label">不及格人数</div>
+          </div>
+        </div>
+
+        <!-- 成绩表格 -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">成绩明细表</h3>
+            <div class="btn-group">
+              <button class="btn btn-primary btn-sm" onclick="batchSave()">批量保存</button>
+              <button class="btn btn-outline btn-sm" onclick="exportScores()">导出本页成绩</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>序号</th>
+                    <th>学号</th>
+                    <th>姓名</th>
+                    <th>语文</th>
+                    <th>数学</th>
+                    <th>英语</th>
+                    <th>物理</th>
+                    <th>化学</th>
+                    <th>生物</th>
+                    <th>总分</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="scoreTableBody">
+                  <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--gray-400);">请先选择班级查看成绩</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="emptyScore" class="empty-state" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+              <h3>暂无成绩数据</h3>
+              <p>选择班级后将自动加载该班级的学生列表，可直接录入成绩</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    let currentScores = {}; // 缓存当前页面的成绩修改
+    const subjects = ['语文','数学','英语','物理','化学','生物'];
+    // 前端中文科目名 → 后端 Score 实体英文字段名映射
+    const subjectToField = {'语文':'chinese','数学':'math','英语':'english','物理':'physics','化学':'chemistry','生物':'biology'};
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!requireLogin()) return;
+      initPageUI('scores');
+      loadClasses();
+    });
+
+    async function loadClasses(){
+      try{
+        const res = await apiRequest('/classes/list');
+        const sel = document.getElementById('classSelect');
+        res.data.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.className}</option>`);
+      }catch(e){}
+    }
+
+
+    async function loadStudents(){
+      const classId = document.getElementById('classSelect').value;
+      if(!classId){
+        document.getElementById('scoreTableBody').innerHTML='<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--gray-400);">请先选择班级查看成绩</td></tr>';
+        return;
+      }
+
+      const semester = document.getElementById('semSelect').value;
+      try{
+        const res = await apiRequest(`/scores/class/${classId}?semester=${semester}`);
+        renderScoreTable(res.data.students || []);
+        updateStats(res.data.stats || {});
+      }catch(e){}
+    }
+
+    function renderScoreTable(students){
+      const tb = document.getElementById('scoreTableBody');
+      const es = document.getElementById('emptyScore');
+
+      if(!students.length){ tb.innerHTML=''; es.style.display=''; return; }
+      es.style.display='none';
+
+      tb.innerHTML = students.map((s,idx) => {
+        const scores = s.scores || {};
+        let total = subjects.reduce((sum,sub)=>sum+((scores[sub]!==undefined)?Number(scores[sub]):0),0);
+        return `
+          <tr data-student-id="${s.id}">
+            <td>${idx+1}</td>
+            <td><strong>${s.studentNo}</strong></td>
+            <td><span class="avatar-sm ${s.gender==='男'?'gender-male':'gender-female'}">${s.name.charAt(0)}</span>${s.name}</td>
+            ${subjects.map(sub=>{
+              const val = (scores[sub]!=='undefined'&&scores[sub]!=null)?scores[sub]:'';
+              return `<td><input type="number" class="form-input score-input" data-student="${s.id}" data-subject="${sub}" value="${val}" min="0" max="100" step="0.5" oninput="onScoreChange(this)" onblur="onScoreBlur(this)"></td>`;
+            }).join('')}
+            <td><strong style="color:var(--primary-600);" id="total_${s.id}">${total||'-'}</strong></td>
+            <td><button class="btn btn-primary btn-sm" onclick="saveSingleScore(${s.id})">保存</button></td>
+          </tr>
+        `;
+      }).join('');
+
+      // 应用分数颜色
+      applyScoreColors();
+    }
+
+    function onScoreChange(input){
+      // 实时更新总分
+      const row = input.closest('tr');
+      const studentId = row.dataset.studentId;
+      let total = 0;
+      row.querySelectorAll('.score-input').forEach(inp=>{
+        const v = parseFloat(inp.value);
+        total += isNaN(v)?0:v;
+      });
+      const totalEl = document.getElementById(`total_${studentId}`);
+      if(totalEl) totalEl.textContent = total || '-';
+    }
+
+    function onScoreBlur(input){
+      const val = parseFloat(input.value);
+      input.classList.remove('score-excellent','score-good','score-pass','score-fail');
+      if(isNaN(val)) return;
+      if(val>=90) input.classList.add('score-excellent');
+      else if(val>=75) input.classList.add('score-good');
+      else if(val>=60) input.classList.add('score-pass');
+      else input.classList.add('score-fail');
+    }
+
+    function applyScoreColors(){
+      document.querySelectorAll('.score-input').forEach(inp=>onScoreBlur(inp));
+    }
+
+    function updateStats(stats){
+      document.getElementById('studentCount').textContent=stats.count||0;
+      document.getElementById('avgScore').textContent=(stats.avg||0).toFixed(1)||'-';
+      document.getElementById('highestScore').textContent=stats.max||'-';
+      document.getElementById('failCount').textContent=stats.failCount||0;
+    }
+
+    // 保存单个学生成绩
+    async function saveSingleScore(studentId){
+      const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+      if(!row) return;
+
+      const classId = document.getElementById('classSelect').value;
+      const semester = document.getElementById('semSelect').value;
+
+      // 组装成后端 Score 实体期望的扁平格式（英文字段名）
+      const body = {
+        studentId: parseInt(studentId),
+        classId: parseInt(classId),
+        semester
+      };
+      row.querySelectorAll('.score-input').forEach(inp=>{
+        const field = subjectToField[inp.dataset.subject];
+        if (field) body[field] = inp.value==='' ? null : parseFloat(inp.value);
+      });
+
+
+
+      const indicator = document.getElementById('saveIndicator');
+      indicator.textContent = '正在保存...';
+      indicator.className = 'save-indicator saving show';
+
+      try{
+        await apiRequest('/scores',{
+          method:'POST',
+          body: JSON.stringify(body)
+        });
+        indicator.textContent = '已保存';
+        indicator.className = 'save-indicator saved show';
+        setTimeout(()=>indicator.classList.remove('show'),2500);
+        showToast('成绩保存成功');
+        loadStudents(); // 刷新统计数据
+      }catch(e){
+        indicator.className = '';
+        showToast('保存失败，请重试','error');
+      }
+    }
+
+    // 批量保存
+    async function batchSave(){
+      const classId = document.getElementById('classSelect').value;
+      if(!classId){ showToast('请先选择班级','warning'); return; }
+
+      const semester = document.getElementById('semSelect').value;
+      const allData = [];
+      document.querySelectorAll('#scoreTableBody tr[data-student-id]').forEach(row=>{
+        const body = {
+          studentId: parseInt(row.dataset.studentId),
+          classId: parseInt(classId),
+          semester
+        };
+        row.querySelectorAll('.score-input').forEach(inp=>{
+          const field = subjectToField[inp.dataset.subject];
+          if (field) body[field] = inp.value==='' ? null : parseFloat(inp.value);
+        });
+        allData.push(body);
+      });
+
+      const indicator = document.getElementById('saveIndicator');
+      indicator.textContent = '正在批量保存...';
+      indicator.className = 'save-indicator saving show';
+
+      try{
+        await apiRequest('/scores/batch',{method:'POST',body:JSON.stringify(allData)});
+        indicator.textContent = '全部已保存';
+        indicator.className = 'save-indicator saved show';
+        setTimeout(()=>indicator.classList.remove('show'),2500);
+        showToast(`成功保存 ${allData.length} 名学生的成绩`);
+        loadStudents();
+      }catch(e){
+        indicator.className='';
+        showToast('批量保存失败','error');
+      }
+    }
+
+    async function exportScores(){
+      const classId = document.getElementById('classSelect').value;
+      if(!classId){ showToast('请先选择班级','warning'); return; }
+      const semester = document.getElementById('semSelect').value;
+      const filename = `成绩单_${new Date().toLocaleDateString('zh-CN')}.xlsx`;
+
+      try {
+        const url = buildUrl(`/scores/export?classId=${classId}&semester=${semester}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          // 尝试解析后端返回的错误信息
+          const err = await response.json().catch(() => ({}));
+          showToast(err.message || '导出失败', 'error');
+          return;
+        }
+
+        // 获取二进制数据并触发下载
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+        showToast('导出成功');
+      } catch(e) {
+        showToast('导出失败: ' + e.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

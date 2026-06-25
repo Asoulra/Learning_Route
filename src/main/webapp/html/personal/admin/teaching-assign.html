@@ -1,0 +1,242 @@
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>授课安排 - 学生成绩管理系统</title>
+  <link rel="stylesheet" href="/css/pub/common.css">
+  <style>
+    .schedule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin-top: 20px; }
+    .schedule-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px; transition: all 0.25s; }
+    .schedule-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .schedule-card .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .schedule-card .class-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: linear-gradient(135deg,var(--primary-50),#eef2ff); color: var(--primary-700); border-radius: 20px; font-size: 14px; font-weight: 650; }
+    .course-tag { display: inline-block; padding: 4px 12px; background: var(--gray-100); border-radius: 6px; font-size: 13px; color: var(--gray-700); margin: 4px 4px 4px 0; }
+    .teacher-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--success-50); color: var(--success-700); border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 8px; }
+    .empty-schedule { text-align: center; padding: 48px; color: var(--gray-400); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" data-active="assign"></aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <h1 class="page-title">授课安排</h1>
+          <p class="page-subtitle">为班级分配教师与课程</p>
+        </div>
+        <div class="header-right" id="headerUser">
+          <!-- 由 common.js renderHeaderUser() 动态填充 -->
+        </div>
+      </header>
+
+      <div class="content-area">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon primary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div>
+            <div class="stat-value" id="totalAssigns">--</div>
+            <div class="stat-label">已安排班级</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <div class="stat-value" id="totalTeachings">--</div>
+            <div class="stat-label">总教学任务</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon warning"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+            <div class="stat-value" id="avgLoad">--</div>
+            <div class="stat-label">教师平均课时</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">班级授课安排</h3>
+            <button class="btn btn-primary btn-sm" onclick="openAddAssign()">+ 新增安排</button>
+          </div>
+          <div class="card-body">
+            <div id="scheduleGrid" class="schedule-grid"></div>
+            <div id="emptySchedule" class="empty-schedule" style="display:none;">
+              <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+              <h3 style="margin:12px 0 6px;font-size:17px;color:var(--gray-700);">暂无授课安排</h3>
+              <p>点击上方按钮为班级分配教师</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 新增/编辑授课安排弹窗 -->
+  <div class="modal-overlay" id="assignModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="assignModalTitle">新增授课安排</h3>
+        <button class="modal-close" onclick="closeModal('assignModal')">&times;</button>
+      </div>
+      <form id="assignForm" onsubmit="saveAssign(event)">
+        <div class="modal-body">
+          <input type="hidden" id="assignId">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">选择班级 *</label>
+              <select id="assignClass" class="form-select" required onchange="onClassChange()">
+                <option value="">请选择班级</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">选择教师 *</label>
+              <select id="assignTeacher" class="form-select" required>
+                <option value="">请选择教师</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">授课科目 *</label>
+              <select id="assignSubject" class="form-select" required>
+                <option value="">请选择科目</option>
+                <option value="语文">语文</option>
+                <option value="数学">数学</option>
+                <option value="英语">英语</option>
+                <option value="物理">物理</option>
+                <option value="化学">化学</option>
+                <option value="生物">生物</option>
+                <option value="历史">历史</option>
+                <option value="地理">地理</option>
+                <option value="政治">政治</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">学期</label>
+              <select id="semester" class="form-select">
+                <option value="2024-2025-1">2024-2025 第一学期</option>
+                <option value="2024-2025-2">2024-2025 第二学期</option>
+                <option value="2025-2026-1">2025-2026 第一学期</option>
+                <option value="2025-2026-2">2025-2026 第二学期</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">备注</label>
+              <textarea id="assignRemark" class="form-input" rows="2" placeholder="选填"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('assignModal')">取消</button>
+          <button type="submit" class="btn btn-primary">确认安排</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/pub/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = requireLogin();
+      if (!user) return;
+      if (user.role !== 'admin') {
+        window.location.href = BASE + '/html/personal/teach/scores.html';
+        return;
+      }
+      initPageUI('assign');
+      loadSchedules();
+      loadStats();
+      initSelects();
+    });
+
+    async function initSelects(){
+      try{
+        const [clsRes, teaRes] = await Promise.all([
+          apiRequest('/classes/list'),
+          apiRequest('/teachers/list')
+        ]);
+        const clsSel = document.getElementById('assignClass');
+        const teaSel = document.getElementById('assignTeacher');
+        clsRes.data.forEach(c => clsSel.innerHTML += `<option value="${c.id}">${c.className}</option>`);
+        teaRes.data.forEach(t => teaSel.innerHTML += `<option value="${t.id}">${t.name} (${t.subject})</option>`);
+      } catch(e){}
+    }
+
+    async function loadSchedules(){
+      try{
+        const res = await apiRequest('/teaching-assignments');
+        renderSchedules(res.data);
+      } catch(e){ renderSchedules([]); }
+    }
+
+    async function loadStats(){
+      try{
+        const res = await apiRequest('/teaching-assignments/stats');
+        document.getElementById('totalAssigns').textContent=res.data.classCount||0;
+        document.getElementById('totalTeachings').textContent=res.data.totalCount||0;
+        document.getElementById('avgLoad').textContent=res.data.avgLoad||0;
+      }catch(e){}
+    }
+
+    function renderSchedules(list){
+      const grid = document.getElementById('scheduleGrid');
+      const empty = document.getElementById('emptySchedule');
+
+      if(!list.length){ grid.innerHTML=''; empty.style.display=''; return; }
+      empty.style.display='none';
+
+      // 按班级分组
+      const grouped={};
+      list.forEach(a=>{
+        if(!grouped[a.classId]) grouped[a.classId]={className:a.className, assignments:[]};
+        grouped[a.classId].assignments.push(a);
+      });
+
+      grid.innerHTML = Object.values(grouped).map(g => `
+        <div class="schedule-card">
+          <div class="header-row">
+            <span class="class-badge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+              ${g.className}
+            </span>
+            <span style="font-size:13px;color:var(--gray-400);">${g.assignments.length}门课</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;margin-bottom:12px;">
+            ${g.assignments.map(a=>`<span class="course-tag">${a.subject}</span>`).join('')}
+          </div>
+          ${g.assignments.map(a=>`
+            <div class="teacher-chip">
+              <span style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--primary-400),var(--primary-600));color:white;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">${(a.teacherName||'?').charAt(0)}</span>
+              ${a.teacherName} — ${a.title||'教师'}
+              <button class="btn btn-danger btn-sm" style="margin-left:auto;padding:3px 8px;font-size:11px;" onclick="deleteAssign(${a.id})">移除</button>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+
+    function openAddAssign(){
+      document.getElementById('assignModalTitle').textContent='新增授课安排';
+      document.getElementById('assignForm').reset();
+      document.getElementById('assignId').value='';
+      openModal('assignModal');
+    }
+
+    function saveAssign(e){
+      e.preventDefault();
+      const data={
+        classId:parseInt(document.getElementById('assignClass').value),
+        teacherId:parseInt(document.getElementById('assignTeacher').value),
+        subject:document.getElementById('assignSubject').value,
+        semester:document.getElementById('semester').value,
+        remark:document.getElementById('assignRemark').value.trim()
+      };
+      apiRequest('/teaching-assignments',{method:'POST',body:JSON.stringify(data)})
+        .then(()=>{showToast('安排成功！');closeModal('assignModal');loadSchedules();loadStats();})
+        .catch(()=>{});
+    }
+
+    function deleteAssign(id){
+      showConfirm('确定要移除这条授课安排吗？',()=>{
+        apiRequest(`/teaching-assignments/${id}`,{method:'DELETE'})
+          .then(()=>{showToast('已移除');loadSchedules();loadStats();})
+          .catch(()=>{});
+      });
+    }
+  </script>
+</body>
+</html>
