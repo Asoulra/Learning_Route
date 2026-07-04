@@ -1,0 +1,7 @@
+CompileFlags:
+  Add:
+    - -isystemD:\StuAPP\mdk\ARM\ARMCLANG/include
+    - -isystemD:\StuAPP\mdk\ARM\ARMCLANG/include/libcxx
+  Remove: []
+  CompilationDatabase: ./build/FCAN
+  Compiler: D:\StuAPP\mdk\ARM\ARMCLANG\bin\armclang.exe
