@@ -17,13 +17,15 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h" 
+#include "main.h"
+#include "can.h"
 #include "i2c.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "oled.h"
+#include "mycan.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -88,6 +90,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
+  MX_CAN_Init();
   /* USER CODE BEGIN 2 */
   OLED_Init();
   OLED_Clear();
@@ -96,18 +99,21 @@ int main(void)
   //OLED_ShowPicture((uint8_t *)data1);
   
   
-  //OLED_DrawString(LINE_0, "   Hello, World");
-  //OLED_DrawString(LINE_1, "    STM32F103!");
-  //OLED_DrawString(LINE_2, "  Here is Asoulra.");
+ 
+  CAN_Start();
+  CAN_SendString(&hcan, 0x123, "ASOULRA");
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t loop_cnt = 0;
   while (1)
   {
+    CAN_ProcessRxDisplay(LINE_0);
+    
     // 播放月薪猫动画，每帧50ms，无限循环
-    OLED_ShowCatAnimation(50, 0);
+    //OLED_ShowCatAnimation(50, 0);
    
     /* USER CODE END WHILE */
 

@@ -29,7 +29,7 @@ void OLED_ShowPicture(const uint8_t *pic_data);
 void OLED_SetPoint(uint8_t x,uint8_t y);
 void OLED_DrawLine(int x1,int y1,int x2,int y2);
 void OLED_DrawWord(uint8_t Line,char ch);
-void OLED_DrawString(uint8_t Line, const char *str);
+void OLED_ShowString(uint8_t Line, const char *str);
 
 
 //行的定义

@@ -327,12 +327,12 @@ void OLED_DrawWord(uint8_t Line, char ch)
  * @details      查找每个字符的点阵数据并批量发送到OLED屏幕
  *               最大支持20个字符，超长字符串会提示"String too long"
  */
-void OLED_DrawString(uint8_t Line, const char *str)
+void OLED_ShowString(uint8_t Line, const char *str)
 {
     uint16_t len = strlen(str);
     if (len > 20)
     {
-        OLED_DrawString(Line, "String too long");
+        OLED_ShowString(Line, "String too long");
         return;
     }
     OLED_SendCmd(Line);

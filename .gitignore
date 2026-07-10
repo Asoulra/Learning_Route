@@ -1,15 +1,29 @@
-# dot files
-/.vscode/launch.json
-/.settings
-/.eide/log
-/.eide.usr.ctx.json
+# 忽略根目录下所有内容（白名单模式）
+/*
 
-# project out
-/build
-/bin
-/obj
-/out
+# === 允许的目录 ===
+!/Core/
+!/Drivers/
+!/MDK-ARM/
+!/User1/
 
-# eide template
-*.ept
-*.eide-template
+# === 允许的根目录文件（GitHub 标配 + 项目配置） ===
+!/.gitignore
+!/README.md
+!/LICENSE
+!/FCAN.ioc
+
+# === MDK-ARM：忽略编译产物，保留项目文件 ===
+MDK-ARM/build/
+MDK-ARM/**/*.o
+MDK-ARM/**/*.crf
+MDK-ARM/**/*.d
+MDK-ARM/**/*.dep
+MDK-ARM/**/*.axf
+MDK-ARM/**/*.hex
+MDK-ARM/**/*.bin
+MDK-ARM/**/*.map
+MDK-ARM/**/*.lst
+MDK-ARM/**/*.htm
+MDK-ARM/**/*.lnp
+MDK-ARM/*.uvguix.*
